@@ -71,9 +71,12 @@ if __name__ == '__main__':
     # proposals = proposals.select(['Consul','Nomad','Packer','Terraform','Vagrant','Vault','Sentinel'])
     # proposals.print_table(max_rows=None, max_columns=None)
 
+    # ('name_stripped', agate.Formula(text_type, lambda r: r['name'].strip()))
+
     proposals = proposals.compute([
-        ('Day Created', agate.Formula(agate.Date(), helper.round_date))
-    ])
+        ('Day Created', agate.Formula(agate.Date(), helper.round_date)),
+        ('Speaker Pronouns', agate.Formula(agate.Text(), lambda row: str(row['Speaker Pronouns']).lower()))
+    ], replace=True)
 
     proposal_count = len(proposals)
     print("Proposals submitted: " + str(proposal_count))
