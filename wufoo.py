@@ -2,6 +2,8 @@ import agate
 import argparse
 import helper
 import cairosvg
+import logging
+import warnings
 
 from decimal import Decimal
 
@@ -10,6 +12,14 @@ from decimal import Decimal
 parser = argparse.ArgumentParser(description="Process csv files from Wufoo for CFP analytics.")
 parser.add_argument("input_file", help="Input filename. Only .csv supported.")
 
+# initilize logging
+logging.basicConfig(level=logging.ERROR)
+
+# attempt to supress annoying deprecation warnings
+# that seem to be coming mostly from dependency:
+# https://github.com/tiran/defusedxml/pull/24
+warnings.simplefilter("ignore", category=DeprecationWarning)
+warnings.simplefilter("ignore", category=RuntimeWarning)
 
 if __name__ == '__main__':
 
@@ -53,6 +63,7 @@ if __name__ == '__main__':
         'Are you a member of any groups underrepresented in the tech industry?': 'Underrepresented',
         'Which group(s)?': 'Underrep Groups',
         'Travel assistance needed?': 'Travel Assist',
+        'What is your level speaking experience?': 'Experience'
     }
 
     proposals = proposals.rename(rename_columns)
@@ -197,15 +208,30 @@ if __name__ == '__main__':
     cairosvg.svg2png(url=args.input_file+'-by-travel.svg', write_to=args.input_file+'-by-travel.png')
     by_travel.to_csv(args.input_file + '-by-travel.csv')
 
-    # groups = proposals.group_by('Terraform')
-    # counts = groups.aggregate([
-        # ('proposal_count', agate.Count())
-    # ])
 
-    # counts.print_table()
+    # columns = ('value',)
+    # rows = ([1],[2],[2],[5])
+    # new_table = agate.Table(rows, columns)
 
-    # terraform = proposals.where(lambda row: row['Terraform'] == 'Terraform')
-    # # .aggregate(['Count', agate.Count()])
-
-    # terraform.print_table()
+    # new_table.columns['value'].values_distinct()
+    # # or
+    # new_table.distinct('value').columns['value'].values()
+    # (Decimal('1'), Decimal('2'), Decimal('5'))
     
+    # by speaking experience
+    by_experience = proposals.pivot('Experience', aggregation=agate.Count('Entry Id'))
+    by_experience.print_table()
+    by_experience.print_bars('Experience','Count')
+    by_experience.column_chart('Experience','Count', args.input_file + '-by-experience.svg')
+    cairosvg.svg2png(url=args.input_file+'-by-experience.svg', write_to=args.input_file+'-by-experience.png')
+    by_experience.to_csv(args.input_file + '-by-experience.csv')
+
+    experience = proposals.columns['Experience'].values_distinct()
+    # print(experience)
+    # exit()
+    # by_experience = proposals
+
+    # pivot = proposals.pivot(['Level','Consul','Terraform'])
+    # pivot.print_table()
+    # exit()
+
