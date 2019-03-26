@@ -39,6 +39,9 @@ if __name__ == '__main__':
 
     proposals = agate.Table.from_csv(args.input_file)
 
+    # proposals.print_structure()
+    # exit()
+
     rename_columns = {
         'HashiCorp Products': 'Consul',
         'HashiCorp Products_2': 'Nomad',
@@ -73,9 +76,12 @@ if __name__ == '__main__':
     # exit()
     # pivot(key=None, pivot=None, aggregation=None, computation=None, default_value=<object object>, key_name=None)
 
-    # pivot = proposals.pivot('Day Created', aggregation=agate.Count('Speaker Email'), computation=agate.Formula(agate.Number(), calc_running_total))
-    pivot = proposals.pivot('Day Created', aggregation=agate.Count('Speaker Email'))
+    # pivot = proposals.pivot('Day Created', aggregation=agate.Count('Entry Id'), computation=agate.Formula(agate.Number(), calc_running_total))
+    pivot = proposals.pivot('Day Created', aggregation=agate.Count('Entry Id'))
     pivot = pivot.compute([('Running Total', helper.RunningSum('Count'))])
+
+    # pivot.print_table()
+    # exit()
 
     pivot.line_chart('Day Created','Running Total', args.input_file + '-total-by-day.svg')
     cairosvg.svg2png(url=args.input_file+'-total-by-day.svg', write_to=args.input_file+'-total-by-day.png')
@@ -92,15 +98,19 @@ if __name__ == '__main__':
 
     # exit()
     products = proposals.pivot(['Terraform','Nomad','Packer','Vault','Vagrant','Sentinel','Consul'])
-    # products.print_table(max_rows=None, max_columns=None)
+    products.print_table(max_rows=None, max_columns=None)
+    products.to_csv(args.input_file + '-product-matrix.csv')
+    # exit()
     # __import__('pprint').pprint(set(tag_inventory))
 
     terraform = proposals.aggregate(agate.Count(column_name='Terraform', value='Terraform'))
+    # terraform.print_structure()
 
     nomad = proposals.aggregate(agate.Count(column_name='Nomad', value='Nomad'))
 
     vagrant = proposals.aggregate(agate.Count(column_name='Vagrant', value='Vagrant'))
     # __import__('pprint').pprint(vagrant)
+    # exit()
 
     vault = proposals.aggregate(agate.Count(column_name='Vault', value='Vault'))
 
@@ -130,7 +140,11 @@ if __name__ == '__main__':
     cairosvg.svg2png(url=args.input_file+'-by-product.svg', write_to=args.input_file+'-by-product.png')
     table.to_csv(args.input_file + '-by-product.csv')
 
-    by_level = proposals.pivot('Level', aggregation=agate.Count('Speaker Email'))
+    by_level_and_product = proposals.pivot(['Level','Consul'])
+    by_level_and_product.print_table()
+    exit()
+
+    by_level = proposals.pivot('Level', aggregation=agate.Count('Entry Id'))
     # by_level.print_table()
     by_level.print_bars('Level','Count')
     by_level.column_chart('Level','Count', args.input_file + '-by-level.svg')
@@ -138,7 +152,7 @@ if __name__ == '__main__':
     by_level.to_csv(args.input_file + '-by-level.csv')
 
     # by pronoun
-    by_pronoun = proposals.pivot('Speaker Pronouns', aggregation=agate.Count('Speaker Email'))
+    by_pronoun = proposals.pivot('Speaker Pronouns', aggregation=agate.Count('Entry Id'))
     # by_pronoun.print_table()
     by_pronoun.print_bars('Speaker Pronouns', 'Count')
     by_pronoun.bar_chart('Speaker Pronouns', 'Count', args.input_file + '-by-pronoun.svg')
@@ -146,14 +160,14 @@ if __name__ == '__main__':
     by_pronoun.to_csv(args.input_file + '-by-pronoun.csv')
 
     # by underrepresented
-    by_underrep = proposals.pivot('Underrepresented', aggregation=agate.Count('Speaker Email'))
+    by_underrep = proposals.pivot('Underrepresented', aggregation=agate.Count('Entry Id'))
     by_underrep.print_bars('Underrepresented', 'Count')
     by_underrep.bar_chart('Underrepresented', 'Count', args.input_file + '-by-underrep.svg')
     cairosvg.svg2png(url=args.input_file+'-by-underrep.svg', write_to=args.input_file+'-by-underrep.png')
     by_underrep.to_csv(args.input_file + '-by-underrep.csv')
 
     # by underrepresented, percent
-    by_underrep = proposals.pivot('Underrepresented', aggregation=agate.Count('Speaker Email'), computation=agate.Percent('Count'))
+    by_underrep = proposals.pivot('Underrepresented', aggregation=agate.Count('Entry Id'), computation=agate.Percent('Count'))
     # by_underrep.print_table()
     by_underrep.print_bars('Underrepresented', 'Percent')
     by_underrep.bar_chart('Underrepresented', 'Percent', args.input_file + '-by-underrep-percent.svg')
@@ -161,14 +175,14 @@ if __name__ == '__main__':
     by_underrep.to_csv(args.input_file + '-by-underrep-percent.csv')
 
     # by underrepresented groups
-    by_underrep_groups = proposals.pivot('Underrep Groups', aggregation=agate.Count('Speaker Email'))
+    by_underrep_groups = proposals.pivot('Underrep Groups', aggregation=agate.Count('Entry Id'))
     by_underrep_groups.print_bars('Underrep Groups', 'Count')
     by_underrep_groups.bar_chart('Underrep Groups', 'Count', args.input_file + '-by-underrep-groups.svg')
     cairosvg.svg2png(url=args.input_file+'-by-underrep-groups.svg', write_to=args.input_file+'-by-underrep-groups.png')
     by_underrep_groups.to_csv(args.input_file + '-by-underrep-groups.csv')
 
     # by travel assist
-    by_travel = proposals.pivot('Travel Assist', aggregation=agate.Count('Speaker Email'))
+    by_travel = proposals.pivot('Travel Assist', aggregation=agate.Count('Entry Id'))
     by_travel.print_bars('Travel Assist', 'Count')
     by_travel.column_chart('Travel Assist', 'Count', args.input_file + '-by-travel.svg')
     cairosvg.svg2png(url=args.input_file+'-by-travel.svg', write_to=args.input_file+'-by-travel.png')
