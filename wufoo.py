@@ -140,9 +140,18 @@ if __name__ == '__main__':
     cairosvg.svg2png(url=args.input_file+'-by-product.svg', write_to=args.input_file+'-by-product.png')
     table.to_csv(args.input_file + '-by-product.csv')
 
-    by_level_and_product = proposals.pivot(['Level','Consul'])
-    by_level_and_product.print_table()
-    exit()
+    products = ['Consul','Terraform','Packer','Nomad','Vagrant','Sentinel','Vault']
+
+    for product in products:
+        print('\n\n' + product + '\n')
+        by_product = proposals.where(lambda row: row[product] == product)
+
+        by_level_and_product = by_product.pivot('Level')
+        # by_level_and_product.print_table()
+        by_level_and_product.print_bars('Level', 'Count')
+        by_level_and_product.bar_chart('Level','Count', args.input_file + '-' + product +'-by-level.svg')
+        cairosvg.svg2png(url=args.input_file+'-'+product+'-by-level.svg', write_to=args.input_file+'-'+product+'-by-level.png')
+        table.to_csv(args.input_file +'-'+product+ '-by-level.csv')
 
     by_level = proposals.pivot('Level', aggregation=agate.Count('Entry Id'))
     # by_level.print_table()
