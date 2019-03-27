@@ -49,12 +49,15 @@ if __name__ == '__main__':
     # new_table.print_table()
     # exit()
 
-
+    # create Agate tablre from csv file
     proposals = agate.Table.from_csv(args.input_file)
 
     # proposals.print_structure()
     # exit()
 
+    # ================================================================
+    # Rename columns that would otherwise be awkward to work with
+    # ================================================================
     rename_columns = {
         'HashiCorp Products': 'Consul',
         'HashiCorp Products_2': 'Nomad',
@@ -71,70 +74,60 @@ if __name__ == '__main__':
 
     proposals = proposals.rename(rename_columns)
 
-    # proposals = proposals.select(['Consul','Nomad','Packer','Terraform','Vagrant','Vault','Sentinel'])
-    # proposals.print_table(max_rows=None, max_columns=None)
-
-    # ('name_stripped', agate.Formula(text_type, lambda r: r['name'].strip()))
-
+    # ================================================================
+    # compute new values:
+    # - drop timestamp from Date Created
+    # - normalize 'Speaker Pronouns' responses
+    # ================================================================
     proposals = proposals.compute([
         ('Day Created', agate.Formula(agate.Date(), helper.round_date)),
         ('Speaker Pronouns', agate.Formula(agate.Text(), lambda row: str(row['Speaker Pronouns']).lower()))
     ], replace=True)
 
+    # ================================================================
+    # Determine and print number of proposals
+    # ================================================================
     proposal_count = len(proposals)
     print("Proposals submitted: " + str(proposal_count))
-    print("\n")
-    # __import__('pprint').pprint(proposal_count)
 
-    # proposals.print_structure()
-    # exit()
-
-    # proposals.to_csv(args.input_file + 'processed.csv')
-    # exit()
     # pivot(key=None, pivot=None, aggregation=None, computation=None, default_value=<object object>, key_name=None)
 
     # pivot = proposals.pivot('Day Created', aggregation=agate.Count('Entry Id'), computation=agate.Formula(agate.Number(), calc_running_total))
+
+    # ================================================================
+    # Calculate running total numnber of proposals received
+    # ================================================================
     pivot = proposals.pivot('Day Created', aggregation=agate.Count('Entry Id'))
     pivot = pivot.compute([('Running Total', helper.RunningSum('Count'))])
 
     # pivot.print_table()
     # exit()
-
+    
+    print('\nRunning Total:\n')
+    pivot.print_bars('Day Created', 'Running Total')
     pivot.line_chart('Day Created','Running Total', args.input_file + '-total-by-day.svg')
     cairosvg.svg2png(url=args.input_file+'-total-by-day.svg', write_to=args.input_file+'-total-by-day.png')
     pivot.to_csv(args.input_file + '-total-by-day.csv')
 
-    # pivot.print_table()
-    # pivot.print_bars('Day Created')
-    pivot.print_bars('Day Created', 'Running Total')
-
-
-    # counts.order_by('exonerated').line_chart('exonerated', 'count', 'docs/images/line_chart.svg')
-
-
-
-    # exit()
+    # ================================================================
+    # Generate matrix of proposals by product
+    # ================================================================
+    print('\nBy product (matrix):\n')
     products = proposals.pivot(['Terraform','Nomad','Packer','Vault','Vagrant','Sentinel','Consul'])
     products.print_table(max_rows=None, max_columns=None)
     products.to_csv(args.input_file + '-product-matrix.csv')
-    # exit()
-    # __import__('pprint').pprint(set(tag_inventory))
 
+    # ================================================================
+    # Generate proposal count per each product
+    # (might be superceeded by product and level matrix below
+    # ================================================================
+    print('\nBy product:\n')
     terraform = proposals.aggregate(agate.Count(column_name='Terraform', value='Terraform'))
-    # terraform.print_structure()
-
     nomad = proposals.aggregate(agate.Count(column_name='Nomad', value='Nomad'))
-
     vagrant = proposals.aggregate(agate.Count(column_name='Vagrant', value='Vagrant'))
-    # __import__('pprint').pprint(vagrant)
-    # exit()
-
     vault = proposals.aggregate(agate.Count(column_name='Vault', value='Vault'))
-
     sentinel = proposals.aggregate(agate.Count(column_name='Sentinel', value='Sentinel'))
-
     consul = proposals.aggregate(agate.Count(column_name='Consul', value='Consul'))
-
     packer = proposals.aggregate(agate.Count(column_name='Packer', value='Packer'))
 
     column_names = ['Product', 'Proposal Count']
@@ -151,16 +144,15 @@ if __name__ == '__main__':
     ]
 
     table = agate.Table(rows, column_names, column_types)
-    # table.print_table()
     table.print_bars('Product', 'Proposal Count')
     table.bar_chart('Product', 'Proposal Count', args.input_file + '-by-product.svg')
     cairosvg.svg2png(url=args.input_file+'-by-product.svg', write_to=args.input_file+'-by-product.png')
     table.to_csv(args.input_file + '-by-product.csv')
 
     # ================================================================
-    # Count by prduct and level
+    # Count by product and level
     # ================================================================
-
+    print('\nBy product and level:\n')
     products = ['Consul','Terraform','Packer','Nomad','Vagrant','Sentinel','Vault']
 
     # we can't just use the dictionary before because of weirdness with Agate table.from_object
@@ -222,16 +214,21 @@ if __name__ == '__main__':
     level_product_matrix.print_table(max_rows=None, max_columns=None)
 
     level_product_matrix.to_csv(args.input_file +'-by-product_and_level.csv')
-    # ================================================================================
 
+    # ================================================================
+    # Proposal count by level of talk
+    # ================================================================
+    print('\nBy level of talk:\n')
     by_level = proposals.pivot('Level', aggregation=agate.Count('Entry Id'))
-    # by_level.print_table()
     by_level.print_bars('Level','Count')
     by_level.column_chart('Level','Count', args.input_file + '-by-level.svg')
     cairosvg.svg2png(url=args.input_file+'-by-level.svg', write_to=args.input_file+'-by-level.png')
     by_level.to_csv(args.input_file + '-by-level.csv')
 
-    # by pronoun
+    # ================================================================
+    # by speaker pronouns
+    # ================================================================
+    print('\nSpeaker pronouns:\n')
     by_pronoun = proposals.pivot('Speaker Pronouns', aggregation=agate.Count('Entry Id'))
     # by_pronoun.print_table()
     by_pronoun.print_bars('Speaker Pronouns', 'Count')
@@ -239,7 +236,10 @@ if __name__ == '__main__':
     cairosvg.svg2png(url=args.input_file+'-by-pronoun.svg', write_to=args.input_file+'-by-pronoun.png')
     by_pronoun.to_csv(args.input_file + '-by-pronoun.csv')
 
-    # by underrepresented
+    # ================================================================
+    # by underrepresented groups
+    # ================================================================
+    print('\nUnderrepresented:\n\n')
     by_underrep = proposals.pivot('Underrepresented', aggregation=agate.Count('Entry Id'))
     by_underrep.print_bars('Underrepresented', 'Count')
     by_underrep.bar_chart('Underrepresented', 'Count', args.input_file + '-by-underrep.svg')
@@ -254,44 +254,32 @@ if __name__ == '__main__':
     cairosvg.svg2png(url=args.input_file+'-by-underrep-percent.svg', write_to=args.input_file+'-by-underrep-percent.png')
     by_underrep.to_csv(args.input_file + '-by-underrep-percent.csv')
 
-    # by underrepresented groups
+    # underrepresented groups
     by_underrep_groups = proposals.pivot('Underrep Groups', aggregation=agate.Count('Entry Id'))
     by_underrep_groups.print_bars('Underrep Groups', 'Count')
     by_underrep_groups.bar_chart('Underrep Groups', 'Count', args.input_file + '-by-underrep-groups.svg')
     cairosvg.svg2png(url=args.input_file+'-by-underrep-groups.svg', write_to=args.input_file+'-by-underrep-groups.png')
     by_underrep_groups.to_csv(args.input_file + '-by-underrep-groups.csv')
 
-    # by travel assist
+    # ================================================================
+    # travel assistance
+    # ================================================================
+    print('\nTravel assistance:\n')
     by_travel = proposals.pivot('Travel Assist', aggregation=agate.Count('Entry Id'))
     by_travel.print_bars('Travel Assist', 'Count')
     by_travel.column_chart('Travel Assist', 'Count', args.input_file + '-by-travel.svg')
     cairosvg.svg2png(url=args.input_file+'-by-travel.svg', write_to=args.input_file+'-by-travel.png')
     by_travel.to_csv(args.input_file + '-by-travel.csv')
 
-
-    # columns = ('value',)
-    # rows = ([1],[2],[2],[5])
-    # new_table = agate.Table(rows, columns)
-
-    # new_table.columns['value'].values_distinct()
-    # # or
-    # new_table.distinct('value').columns['value'].values()
-    # (Decimal('1'), Decimal('2'), Decimal('5'))
-    
+    # ================================================================
     # by speaking experience
+    # ================================================================
+    print('\nSpeaking experience:\n')
     by_experience = proposals.pivot('Experience', aggregation=agate.Count('Entry Id'))
-    by_experience.print_table()
+    # by_experience.print_table()
     by_experience.print_bars('Experience','Count')
     by_experience.column_chart('Experience','Count', args.input_file + '-by-experience.svg')
     cairosvg.svg2png(url=args.input_file+'-by-experience.svg', write_to=args.input_file+'-by-experience.png')
     by_experience.to_csv(args.input_file + '-by-experience.csv')
 
     experience = proposals.columns['Experience'].values_distinct()
-    # print(experience)
-    # exit()
-    # by_experience = proposals
-
-    # pivot = proposals.pivot(['Level','Consul','Terraform'])
-    # pivot.print_table()
-    # exit()
-
