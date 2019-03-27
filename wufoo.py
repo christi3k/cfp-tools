@@ -8,7 +8,6 @@ import pprint
 
 from decimal import Decimal
 
-
 # initialize argument parser
 parser = argparse.ArgumentParser(description="Process csv files from Wufoo for CFP analytics.")
 parser.add_argument("input_file", help="Input filename. Only .csv supported.")
@@ -81,7 +80,9 @@ if __name__ == '__main__':
     # ================================================================
     proposals = proposals.compute([
         ('Day Created', agate.Formula(agate.Date(), helper.round_date)),
-        ('Speaker Pronouns', agate.Formula(agate.Text(), lambda row: str(row['Speaker Pronouns']).lower()))
+        ('Speaker Pronouns', agate.Formula(agate.Text(), lambda row: str(row['Speaker Pronouns']).lower())),
+        ('Employee', agate.Formula(agate.Text(), helper.is_employee)),
+        ('Speaker Company', agate.Formula(agate.Text(), helper.fix_hashicorp))
     ], replace=True)
 
     # ================================================================
@@ -282,4 +283,25 @@ if __name__ == '__main__':
     cairosvg.svg2png(url=args.input_file+'-by-experience.svg', write_to=args.input_file+'-by-experience.png')
     by_experience.to_csv(args.input_file + '-by-experience.csv')
 
-    experience = proposals.columns['Experience'].values_distinct()
+    # experience = proposals.columns['Experience'].values_distinct()
+
+    # ================================================================
+    # By employee status
+    # ================================================================
+    print('\nBy employee status:\n')
+    by_employee = proposals.pivot('Employee', aggregation=agate.Count('Entry Id'))
+    by_employee.print_bars('Employee','Count')
+    by_employee.column_chart('Employee','Count', args.input_file + '-by-employee.svg')
+    cairosvg.svg2png(url=args.input_file+'-by-employee.svg', write_to=args.input_file+'-by-employee.png')
+    by_employee.to_csv(args.input_file + '-by-employee.csv')
+
+    # ================================================================
+    # By company
+    # ================================================================
+    print('\nBy company:\n')
+    by_company = proposals.pivot('Speaker Company', aggregation=agate.Count('Entry Id'))
+    by_company.print_bars('Speaker Company','Count')
+    by_company.column_chart('Speaker Company','Count', args.input_file + '-by-company.svg')
+    cairosvg.svg2png(url=args.input_file+'-by-company.svg', write_to=args.input_file+'-by-company.png')
+    by_company.to_csv(args.input_file + '-by-company.csv')
+
