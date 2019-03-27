@@ -4,6 +4,7 @@ import helper
 import cairosvg
 import logging
 import warnings
+import pprint
 
 from decimal import Decimal
 
@@ -20,6 +21,8 @@ logging.basicConfig(level=logging.ERROR)
 # https://github.com/tiran/defusedxml/pull/24
 warnings.simplefilter("ignore", category=DeprecationWarning)
 warnings.simplefilter("ignore", category=RuntimeWarning)
+
+pp = pprint.PrettyPrinter()
 
 if __name__ == '__main__':
 
@@ -154,18 +157,72 @@ if __name__ == '__main__':
     cairosvg.svg2png(url=args.input_file+'-by-product.svg', write_to=args.input_file+'-by-product.png')
     table.to_csv(args.input_file + '-by-product.csv')
 
+    # ================================================================
+    # Count by prduct and level
+    # ================================================================
+
     products = ['Consul','Terraform','Packer','Nomad','Vagrant','Sentinel','Vault']
 
+    # we can't just use the dictionary before because of weirdness with Agate table.from_object
+    compiled = [
+        ['Beginner'],
+        ['Intermediate'],
+        ['Advanced']
+    ]
+    
+    # ensure computed values for columns and rows aligns
+    levels = {
+            0:'Beginner',
+            1:'Intermediate', 
+            2:'Advanced'
+    }
+
+    # we know name of first column
+    # remaining columns will have names of products and be set
+    # as we loop through them
+    column_names = ['Level']
+
+    column_types = [
+            agate.Text(), 
+            agate.Number(),
+            agate.Number(),
+            agate.Number(),
+            agate.Number(),
+            agate.Number(),
+            agate.Number(),
+            agate.Number()
+        ]
+
     for product in products:
-        print('\n\n' + product + '\n')
+        # get list of entries tagged with given product
         by_product = proposals.where(lambda row: row[product] == product)
 
+        # pivot on level to get count of entries per product and level
         by_level_and_product = by_product.pivot('Level')
         # by_level_and_product.print_table()
-        by_level_and_product.print_bars('Level', 'Count')
-        by_level_and_product.bar_chart('Level','Count', args.input_file + '-' + product +'-by-level.svg')
-        cairosvg.svg2png(url=args.input_file+'-'+product+'-by-level.svg', write_to=args.input_file+'-'+product+'-by-level.png')
-        table.to_csv(args.input_file +'-'+product+ '-by-level.csv')
+        # by_level_and_product.print_bars('Level', 'Count')
+        row_names = by_level_and_product.row_names
+        # by_level_and_product.bar_chart('Level','Count', args.input_file + '-' + product +'-by-level.svg')
+        # cairosvg.svg2png(url=args.input_file+'-'+product+'-by-level.svg', write_to=args.input_file+'-'+product+'-by-level.png')
+        # table.to_csv(args.input_file +'-'+product+ '-by-level.csv')
+
+        column_names.append(product)
+        # fill out composite table
+        for level_id, level in levels.items():
+            if level in by_level_and_product.row_names:
+                level_count = by_level_and_product.rows[level]['Count']
+            else:
+                level_count = 0
+            compiled[level_id].append(level_count)
+
+        # print(compiled)
+
+    # table = agate.Table(compiled, column_names=['Level','Product'])
+    level_product_matrix = agate.Table(compiled, column_names=column_names, column_types=column_types)
+    level_product_matrix.print_table(max_rows=None, max_columns=None)
+
+    level_product_matrix.to_csv(args.input_file +'-by-product_and_level.csv')
+    # ================================================================================
 
     by_level = proposals.pivot('Level', aggregation=agate.Count('Entry Id'))
     # by_level.print_table()
