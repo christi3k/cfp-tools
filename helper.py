@@ -6,6 +6,8 @@ def round_date(row):
     return row['Date Created'].strftime('%Y-%m-%d')
 
 def is_employee(row):
+    if row['Speaker Company'] is None:
+        return False
     result = re.search(r'[Hh]ashi[Cc]orp', row['Speaker Company'])
     return False if result is None else True
 

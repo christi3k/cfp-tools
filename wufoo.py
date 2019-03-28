@@ -275,15 +275,16 @@ if __name__ == '__main__':
     # ================================================================
     # by speaking experience
     # ================================================================
-    print('\nSpeaking experience:\n')
-    by_experience = proposals.pivot('Experience', aggregation=agate.Count('Entry Id'))
-    # by_experience.print_table()
-    by_experience.print_bars('Experience','Count')
-    by_experience.column_chart('Experience','Count', args.input_file + '-by-experience.svg')
-    cairosvg.svg2png(url=args.input_file+'-by-experience.svg', write_to=args.input_file+'-by-experience.png')
-    by_experience.to_csv(args.input_file + '-by-experience.csv')
+    if 'Experience' in proposals.column_names:
+        print('\nSpeaking experience:\n')
+        by_experience = proposals.pivot('Experience', aggregation=agate.Count('Entry Id'))
+        # by_experience.print_table()
+        by_experience.print_bars('Experience','Count')
+        by_experience.column_chart('Experience','Count', args.input_file + '-by-experience.svg')
+        cairosvg.svg2png(url=args.input_file+'-by-experience.svg', write_to=args.input_file+'-by-experience.png')
+        by_experience.to_csv(args.input_file + '-by-experience.csv')
 
-    # experience = proposals.columns['Experience'].values_distinct()
+        # experience = proposals.columns['Experience'].values_distinct()
 
     # ================================================================
     # By employee status
